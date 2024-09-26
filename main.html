@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Discussion Portal</title>
+    <style>
+        body,
+        html {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+            height: 100%;
+        }
+
+        .container {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+
+        header {
+            background-color: #0d9488;
+            color: white;
+            padding: 1rem;
+        }
+
+        h1,
+        h2,
+        h3 {
+            margin: 0;
+            margin-bottom: 10px;
+        }
+
+        .content {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        .left-pane {
+            width: 33%;
+            padding: 1rem;
+            border-right: 1px solid #ccc;
+            overflow-y: auto;
+        }
+
+        .right-pane {
+            width: 67%;
+            padding: 1rem;
+            overflow-y: auto;
+        }
+
+        .search-bar {
+            display: flex;
+            margin-bottom: 1rem;
+        }
+
+        button {
+            background-color: #3b82f6;
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            cursor: pointer;
+            border-radius: 0.25rem;
+        }
+
+        button:hover {
+            background-color: #2563eb;
+        }
+
+        input,
+        textarea {
+            width: 100%;
+            padding: 0.5rem;
+            margin-bottom: 1rem;
+            border: 1px solid #ccc;
+            border-radius: 0.25rem;
+        }
+
+        .question-item {
+            padding: 0.5rem;
+            background-color: #f3f4f6;
+            margin-bottom: 0.5rem;
+            cursor: pointer;
+            border-radius: 0.25rem;
+        }
+
+        .question-item:hover {
+            background-color: #e5e7eb;
+        }
+
+        .response {
+            border-bottom: 1px solid #ccc;
+            padding: 0.5rem 0;
+        }
+
+        .response-name {
+            font-weight: bold;
+        }
+
+        #resolveBtn {
+            float: right;
+        }
+
+        #newQuestionBtn {
+            margin-right: 1.5rem;
+            width: 250px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <h1>Discussion Portal</h1>
+        </header>
+        <div class="content">
+            <div class="left-pane">
+                <div class="search-bar">
+                    <button id="newQuestionBtn">New Question form</button>
+                    <input type="text" id="searchInput" placeholder="search questions...">
+                </div>
+                <div id="questionsList"></div>
+            </div>
+            <div class="right-pane" id="rightPane">
+                <h2>Welcome to Discussion Portal !</h2>
+                <p>Enter a subject and question to get started</p>
+                <form id="questionForm">
+                    <input type="text" id="subjectInput" placeholder="Subject" required>
+                    <textarea id="questionInput" placeholder="Question" required></textarea>
+                    <button type="submit">Submit</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let questions = [];
+        const questionsList = document.getElementById('questionsList');
+        const rightPane = document.getElementById('rightPane');
+        const questionForm = document.getElementById('questionForm');
+        const subjectInput = document.getElementById('subjectInput');
+        const questionInput = document.getElementById('questionInput');
+        const searchInput = document.getElementById('searchInput');
+        const newQuestionBtn = document.getElementById('newQuestionBtn');
+
+        questionForm.addEventListener('submit', function (e) {
+            e.preventDefault();
+            const subject = subjectInput.value.trim();
+            const question = questionInput.value.trim();
+            if (subject && question) {
+                questions.push({ subject, question, responses: [] });
+                updateQuestionsList();
+                subjectInput.value = '';
+                questionInput.value = '';
+            } else {
+                showError('Please fill in both subject and question fields.');
+            }
+        });
+
+        searchInput.addEventListener('input', updateQuestionsList);
+
+        newQuestionBtn.addEventListener('click', showNewQuestionForm);
+
+        function updateQuestionsList() {
+            const searchTerm = searchInput.value.toLowerCase();
+            const filteredQuestions = questions.filter(q =>
+                q.subject.toLowerCase().includes(searchTerm) ||
+                q.question.toLowerCase().includes(searchTerm)
+            );
+            questionsList.innerHTML = '';
+            filteredQuestions.forEach((q, index) => {
+                const div = document.createElement('div');
+                div.className = 'question-item';
+                div.innerHTML = `<h3>${q.subject}</h3><p>${q.question}</p>`;
+                div.addEventListener('click', () => showQuestion(index));
+                questionsList.appendChild(div);
+            });
+        }
+
+        function showQuestion(index) {
+            const q = questions[index];
+            rightPane.innerHTML = `
+                <h2>Question</h2>
+                <div class="question-item">
+                    <h3>${q.subject}</h3>
+                    <p>${q.question}</p>
+                </div>
+                <button id="resolveBtn">Resolve</button>
+                <h3>Response</h3>
+                <div id="responsesList"></div>
+                <h3>Add Response</h3>
+                <form id="responseForm">
+                    <input type="text" id="nameInput" placeholder="Enter Name" required>
+                    <textarea id="responseInput" placeholder="Enter Comment" required></textarea>
+                    <button type="submit">Submit</button>
+                </form>
+            `;
+            document.getElementById('responseForm').addEventListener('submit', function (e) {
+                e.preventDefault();
+                const name = document.getElementById('nameInput').value.trim();
+                const response = document.getElementById('responseInput').value.trim();
+                if (name && response) {
+                    q.responses.push({ name, response });
+                    updateResponses(q);
+                    document.getElementById('nameInput').value = '';
+                    document.getElementById('responseInput').value = '';
+                } else {
+                    showError('Please fill in both name and comment fields.');
+                }
+            });
+            document.getElementById('resolveBtn').addEventListener('click', function () {
+                questions.splice(index, 1);
+                updateQuestionsList();
+                showNewQuestionForm();
+            });
+            updateResponses(q);
+        }
+
+        function updateResponses(question) {
+            const responsesList = document.getElementById('responsesList');
+            responsesList.innerHTML = '';
+            question.responses.forEach(r => {
+                const div = document.createElement('div');
+                div.className = 'response';
+                div.innerHTML = `<div class="response-name">${r.name}</div><div>${r.response}</div>`;
+                responsesList.appendChild(div);
+            });
+        }
+
+        function showNewQuestionForm() {
+            rightPane.innerHTML = `
+                <h2>Welcome to Discussion Portal !</h2>
+                <p>Enter a subject and question to get started</p>
+                <form id="questionForm">
+                    <input type="text" id="subjectInput" placeholder="Subject" required>
+                    <textarea id="questionInput" placeholder="Question" required></textarea>
+                    <button type="submit">Submit</button>
+                </form>
+            `;
+            document.getElementById('questionForm').addEventListener('submit', function (e) {
+                e.preventDefault();
+                const subject = document.getElementById('subjectInput').value.trim();
+                const question = document.getElementById('questionInput').value.trim();
+                if (subject && question) {
+                    questions.push({ subject, question, responses: [] });
+                    updateQuestionsList();
+                    document.getElementById('subjectInput').value = '';
+                    document.getElementById('questionInput').value = '';
+                } else {
+                    showError('Please fill in both subject and question fields.');
+                }
+            });
+        }
+
+        function showError(message) {
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'error';
+            errorDiv.textContent = message;
+            rightPane.insertBefore(errorDiv, rightPane.firstChild);
+            setTimeout(() => errorDiv.remove(), 3000);
+        }
+
+        updateQuestionsList();
+    </script>
+</body>
+
+</html>
